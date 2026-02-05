@@ -1,8 +1,8 @@
-# AutoContent Calendar
+# Postella
 
 A full-stack web application for planning, scheduling, and automatically publishing content to multiple social media platforms.
 
-![AutoContent Calendar](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Postella](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.9+-blue.svg)
 ![Flask](https://img.shields.io/badge/flask-3.0.0-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
@@ -57,8 +57,8 @@ A full-stack web application for planning, scheduling, and automatically publish
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/AutoContentCalendar.git
-cd AutoContentCalendar
+git clone https://github.com/yourusername/Postella.git
+cd Postella
 ```
 
 2. **Create virtual environment**
@@ -75,11 +75,11 @@ pip install -r requirements.txt
 4. **Set up PostgreSQL database**
 ```bash
 # Create database
-createdb autocontent_calendar
+createdb postella
 
 # Or using psql
 psql -U postgres
-CREATE DATABASE autocontent_calendar;
+CREATE DATABASE postella;
 \q
 ```
 
@@ -134,7 +134,7 @@ SECRET_KEY=your-secret-key-here
 FLASK_ENV=development
 
 # Database
-DATABASE_URL=postgresql://username:password@localhost:5432/autocontent_calendar
+DATABASE_URL=postgresql://username:password@localhost:5432/postella
 
 # Redis
 REDIS_URL=redis://localhost:6379/0
