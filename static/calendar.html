@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar - Postella</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">Postella</div>
+        <div class="nav-menu">
+            <a href="/index.html" class="nav-link">Dashboard</a>
+            <a href="/calendar.html" class="nav-link active">Calendar</a>
+            <a href="/posts.html" class="nav-link">Posts</a>
+            <a href="/settings.html" class="nav-link">Settings</a>
+            <a href="#" class="nav-link" id="logoutBtn">Logout</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="page-header">
+            <h1>Content Calendar</h1>
+            <div class="calendar-controls">
+                <button class="btn btn-secondary" id="prevMonth">‹</button>
+                <h2 id="currentMonth">Loading...</h2>
+                <button class="btn btn-secondary" id="nextMonth">›</button>
+                <button class="btn btn-primary" onclick="location.href='/create-post.html'">
+                    + Create Post
+                </button>
+                <button class="btn btn-secondary" id="planMonthBtn">
+                    Plan Month
+                </button>
+            </div>
+        </div>
+        
+        <!-- Calendar View Selector -->
+        <div class="view-selector">
+            <button class="view-btn active" data-view="month">Month</button>
+            <button class="view-btn" data-view="week">Week</button>
+            <button class="view-btn" data-view="day">Day</button>
+        </div>
+        
+        <!-- Calendar Grid -->
+        <div id="calendarContainer">
+            <div class="calendar-grid" id="calendarGrid">
+                <div class="loading">Loading calendar...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Post Detail Modal -->
+    <div id="postModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="postDetail"></div>
+        </div>
+    </div>
+
+    <!-- Plan Month Modal -->
+    <div id="planMonthModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" id="planMonthClose">&times;</span>
+            <h2 style="margin-bottom: 1rem;">Plan Posts for the Month</h2>
+            <div id="planMonthError" class="alert alert-error" style="display:none;"></div>
+            <div id="planMonthSuccess" class="alert alert-success" style="display:none;"></div>
+            <form id="planMonthForm">
+                <div class="form-group">
+                    <label for="planMonth">Month</label>
+                    <input type="month" id="planMonth" required>
+                </div>
+                <div class="form-group">
+                    <label for="planPlatform">Platform</label>
+                    <select id="planPlatform" required></select>
+                </div>
+                <div class="form-group">
+                    <label for="planTime">Time of Day</label>
+                    <input type="time" id="planTime" value="09:00" required>
+                </div>
+                <div class="form-group">
+                    <label for="planTimezone">Timezone</label>
+                    <input type="text" id="planTimezone" placeholder="America/New_York" required>
+                    <small>Use an IANA timezone, e.g., America/New_York</small>
+                </div>
+                <div class="form-group">
+                    <label for="planTitleTemplate">Title Template</label>
+                    <input type="text" id="planTitleTemplate" value="Planned post for {date}">
+                    <small>Available: {date}, {day}, {month}, {day_of_month}, {platform}</small>
+                </div>
+                <div class="form-group">
+                    <label for="planContentTemplate">Content Template</label>
+                    <textarea id="planContentTemplate" rows="4" required></textarea>
+                    <small>Available: {date}, {day}, {month}, {day_of_month}, {platform}</small>
+                </div>
+                <div class="form-group" style="display:flex; gap:1rem; align-items:center;">
+                    <label style="display:flex; gap:0.5rem; align-items:center;">
+                        <input type="checkbox" id="planWeekdaysOnly">
+                        Weekdays only
+                    </label>
+                    <label style="display:flex; gap:0.5rem; align-items:center;">
+                        <input type="checkbox" id="planSkipExisting" checked>
+                        Skip existing scheduled posts
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Plan Month</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/calendar.js"></script>
+</body>
+</html>

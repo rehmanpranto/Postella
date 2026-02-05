@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Post - Postella</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">Postella</div>
+        <div class="nav-menu">
+            <a href="/index.html" class="nav-link">Dashboard</a>
+            <a href="/calendar.html" class="nav-link">Calendar</a>
+            <a href="/posts.html" class="nav-link">Posts</a>
+            <a href="/settings.html" class="nav-link">Settings</a>
+            <a href="#" class="nav-link" id="logoutBtn">Logout</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="page-header">
+            <h1 id="pageTitle">Create Post</h1>
+        </div>
+        
+        <div class="form-container">
+            <form id="postForm" enctype="multipart/form-data">
+                <input type="hidden" id="postId" name="post_id">
+                
+                <div class="form-group">
+                    <label for="title">Title *</label>
+                    <input type="text" id="title" name="title" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="platform">Platform *</label>
+                    <select id="platform" name="platform" required>
+                        <option value="">Select Platform</option>
+                        <option value="facebook">Facebook</option>
+                        <option value="instagram">Instagram</option>
+                        <option value="linkedin">LinkedIn</option>
+                        <option value="twitter">Twitter/X</option>
+                    </select>
+                    <div id="platformInfo" class="platform-info"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="content">Content *</label>
+                    <textarea id="content" name="content" rows="6" required></textarea>
+                    <div class="char-count">
+                        <span id="charCount">0</span> / <span id="maxChars">unlimited</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="media">Media (Image/Video)</label>
+                    <input type="file" id="media" name="media" accept="image/*,video/*">
+                    <div id="mediaPreview" class="media-preview"></div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="scheduledDate">Scheduled Date</label>
+                        <input type="date" id="scheduledDate" name="scheduled_date">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="scheduledTime">Scheduled Time</label>
+                        <input type="time" id="scheduledTime" name="scheduled_time">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="country">Country</label>
+                        <select id="country" name="country"></select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="timezone">Timezone</label>
+                        <select id="timezone" name="timezone"></select>
+                    </div>
+                </div>
+                
+                <div id="errorMessage" class="error-message" style="display: none;"></div>
+                <div id="successMessage" class="success-message" style="display: none;"></div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="location.href='/posts.html'">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        Create Post
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/post-form.js"></script>
+</body>
+</html>
