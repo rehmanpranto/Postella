@@ -307,3 +307,96 @@ def get_platforms():
     return jsonify({
         'platforms': [platform.to_dict() for platform in platforms]
     }), 200
+
+
+@bp.route('/multi', methods=['POST'])
+@jwt_required()
+@editor_required
+@limiter.limit("50 per hour")
+def create_multi_platform_post():
+    """Create the same post for multiple platforms at once."""
+    user_id = get_current_user_id()
+    if user_id is None:
+        return jsonify({'error': 'Invalid token'}), 401
+
+    title = request.form.get('title')
+    content = request.form.get('content')
+    platforms_raw = request.form.get('platforms', '')  # comma-separated
+    scheduled_time = request.form.get('scheduled_time')
+    timezone = request.form.get('timezone', 'UTC')
+
+    if not all([title, content, platforms_raw]):
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    platform_names = [p.strip() for p in platforms_raw.split(',') if p.strip()]
+    if not platform_names:
+        return jsonify({'error': 'At least one platform is required'}), 400
+
+    # Validate all platforms first
+    platform_enums = []
+    for name in platform_names:
+        try:
+            platform_enums.append(PlatformType(name))
+        except ValueError:
+            return jsonify({'error': f'Invalid platform: {name}'}), 400
+
+    # Validate content length against each platform's config
+    for pe in platform_enums:
+        config = PlatformConfig.query.filter_by(platform=pe).first()
+        if config and len(content) > config.max_text_length:
+            return jsonify({
+                'error': f'Content exceeds max length for {pe.value} ({config.max_text_length} chars)'
+            }), 400
+
+    # Handle file upload once
+    media_path = None
+    media_type = None
+    if 'media' in request.files:
+        file = request.files['media']
+        if file.filename:
+            media_path = save_uploaded_file(file)
+            if not media_path:
+                return jsonify({'error': 'Invalid file type'}), 400
+            media_type = get_media_type(media_path)
+
+    # Parse scheduled time once
+    scheduled_datetime = None
+    status = PostStatus.DRAFT
+    if scheduled_time:
+        try:
+            scheduled_datetime = datetime.fromisoformat(scheduled_time.replace('Z', '+00:00'))
+            if timezone != 'UTC':
+                tz = pytz.timezone(timezone)
+                if scheduled_datetime.tzinfo is None:
+                    scheduled_datetime = tz.localize(scheduled_datetime)
+                scheduled_datetime = scheduled_datetime.astimezone(pytz.UTC)
+            if scheduled_datetime > datetime.now(pytz.UTC):
+                status = PostStatus.SCHEDULED
+        except (ValueError, pytz.exceptions.UnknownTimeZoneError) as e:
+            return jsonify({'error': f'Invalid scheduled time or timezone: {str(e)}'}), 400
+
+    # Create one post per platform
+    created = []
+    for pe in platform_enums:
+        post = Post(
+            user_id=user_id,
+            title=title,
+            content=content,
+            platform=pe,
+            status=status,
+            scheduled_time=scheduled_datetime,
+            timezone=timezone,
+            media_path=media_path,
+            media_type=media_type
+        )
+        db.session.add(post)
+        db.session.flush()  # get post.id before commit
+        created.append(post)
+        log_action(user_id, 'create_post', 'success', post_id=post.id, platform=pe)
+
+    db.session.commit()
+
+    return jsonify({
+        'message': f'Post created for {len(created)} platform(s)',
+        'posts': [p.to_dict() for p in created]
+    }), 201

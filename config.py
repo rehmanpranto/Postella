@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
 
 class Config:
     """Base configuration"""
@@ -11,21 +13,19 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
     DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
     
-    # Database
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        'DATABASE_URL',
-        'postgresql://localhost/autocontent_calendar'
-    )
+    # Database — defaults to SQLite so the app runs without PostgreSQL
+    _db_url = os.getenv('DATABASE_URL', f'sqlite:///{os.path.join(BASE_DIR, "postella.db")}')
+    # Render / Heroku supply postgres:// but SQLAlchemy requires postgresql://
+    if _db_url.startswith('postgres://'):
+        _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
+    SQLALCHEMY_DATABASE_URI = _db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_pre_ping': True,
-        'pool_recycle': 300,
-    }
+    SQLALCHEMY_ENGINE_OPTIONS = {}
     
     # JWT
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'jwt-secret-key-change-in-production')
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(
-        seconds=int(os.getenv('JWT_ACCESS_TOKEN_EXPIRES', 3600))
+        seconds=int(os.getenv('JWT_ACCESS_TOKEN_EXPIRES', 86400))
     )
     JWT_TOKEN_LOCATION = ['headers']
     JWT_HEADER_NAME = 'Authorization'
@@ -38,10 +38,10 @@ class Config:
         os.getenv('ALLOWED_EXTENSIONS', 'png,jpg,jpeg,gif,mp4,mov,avi').split(',')
     )
     
-    # Redis & Celery
-    REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
-    CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
-    CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+    # Redis & Celery (optional — app works without them)
+    REDIS_URL = os.getenv('REDIS_URL', '')
+    CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', '')
+    CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', '')
     CELERY_TASK_SERIALIZER = 'json'
     CELERY_RESULT_SERIALIZER = 'json'
     CELERY_ACCEPT_CONTENT = ['json']
@@ -49,20 +49,20 @@ class Config:
     CELERY_BEAT_SCHEDULE = {
         'check-scheduled-posts': {
             'task': 'app.tasks.check_and_publish_posts',
-            'schedule': 60.0,  # Every 60 seconds
+            'schedule': 60.0,
         },
     }
     
     # Security
     ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY', 'default-encryption-key-change!!')
     
-    # Rate Limiting
-    RATELIMIT_STORAGE_URL = os.getenv('RATELIMIT_STORAGE_URL', 'redis://localhost:6379/1')
-    RATELIMIT_DEFAULT = os.getenv('RATELIMIT_DEFAULT', '200 per day;50 per hour')
+    # Rate Limiting — defaults to in-memory so Redis is not required
+    RATELIMIT_STORAGE_URL = os.getenv('RATELIMIT_STORAGE_URL', 'memory://')
+    RATELIMIT_DEFAULT = os.getenv('RATELIMIT_DEFAULT', '1000 per day;200 per hour')
     
     # Frontend / CORS
     FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5000')
-    CORS_ORIGINS = FRONTEND_URL
+    CORS_ORIGINS = '*'
     
     # Timezone
     DEFAULT_TIMEZONE = os.getenv('DEFAULT_TIMEZONE', 'UTC')
@@ -98,12 +98,16 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     """Production configuration"""
     DEBUG = False
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,
+        'pool_recycle': 300,
+    }
 
 
 class TestingConfig(Config):
     """Testing configuration"""
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/autocontent_calendar_test'
+    SQLALCHEMY_DATABASE_URI = f'sqlite:///{os.path.join(BASE_DIR, "test.db")}'
 
 
 config = {

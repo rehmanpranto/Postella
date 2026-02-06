@@ -22,6 +22,7 @@ def create_app(config_name=None):
     
     # Register blueprints
     from app.routes import auth, posts, calendar, oauth, admin, health, frontend
+    from app.routes.contact import contact_bp
     
     app.register_blueprint(auth.bp)
     app.register_blueprint(posts.bp)
@@ -29,6 +30,7 @@ def create_app(config_name=None):
     app.register_blueprint(oauth.bp)
     app.register_blueprint(admin.bp)
     app.register_blueprint(health.bp)
+    app.register_blueprint(contact_bp)
     app.register_blueprint(frontend.bp)  # Register last to catch remaining routes
     
     # Error handlers
@@ -36,8 +38,71 @@ def create_app(config_name=None):
     
     # CLI commands
     register_commands(app)
+
+    # Auto-create tables on first request (dev convenience)
+    with app.app_context():
+        db.create_all()
+        _seed_platform_configs(app)
     
     return app
+
+
+def _seed_platform_configs(app):
+    """Seed default platform configs if table is empty."""
+    from app.models import PlatformConfig, PlatformType
+    try:
+        if PlatformConfig.query.first() is None:
+            platforms = [
+                {
+                    'platform': PlatformType.FACEBOOK,
+                    'max_text_length': 63206,
+                    'supports_images': True,
+                    'supports_videos': True,
+                    'max_image_size_mb': 4,
+                    'max_video_size_mb': 1024,
+                    'allowed_image_formats': 'jpg,jpeg,png,gif',
+                    'allowed_video_formats': 'mp4,mov',
+                    'rate_limit_per_hour': 200
+                },
+                {
+                    'platform': PlatformType.INSTAGRAM,
+                    'max_text_length': 2200,
+                    'supports_images': True,
+                    'supports_videos': True,
+                    'max_image_size_mb': 8,
+                    'max_video_size_mb': 100,
+                    'allowed_image_formats': 'jpg,jpeg,png',
+                    'allowed_video_formats': 'mp4,mov',
+                    'rate_limit_per_hour': 25
+                },
+                {
+                    'platform': PlatformType.LINKEDIN,
+                    'max_text_length': 3000,
+                    'supports_images': True,
+                    'supports_videos': True,
+                    'max_image_size_mb': 5,
+                    'max_video_size_mb': 200,
+                    'allowed_image_formats': 'jpg,jpeg,png,gif',
+                    'allowed_video_formats': 'mp4,mov,avi',
+                    'rate_limit_per_hour': 100
+                },
+                {
+                    'platform': PlatformType.TWITTER,
+                    'max_text_length': 280,
+                    'supports_images': True,
+                    'supports_videos': True,
+                    'max_image_size_mb': 5,
+                    'max_video_size_mb': 512,
+                    'allowed_image_formats': 'jpg,jpeg,png,gif',
+                    'allowed_video_formats': 'mp4,mov',
+                    'rate_limit_per_hour': 300
+                }
+            ]
+            for p in platforms:
+                db.session.add(PlatformConfig(**p))
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 
 def register_error_handlers(app):

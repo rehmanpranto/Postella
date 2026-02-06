@@ -198,7 +198,13 @@ function displayDayView(data, grid) {
     });
 
     if (posts.length === 0) {
-        grid.innerHTML = '<div class="loading">No posts scheduled for this day.</div>';
+        grid.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">📅</div>
+                <h3>No posts scheduled</h3>
+                <p>Nothing planned for this day yet.</p>
+                <a href="/create-post.html" class="btn btn-primary">+ Create Post</a>
+            </div>`;
         return;
     }
 
@@ -341,10 +347,11 @@ async function deletePost(postId) {
     try {
         await apiCall(`/posts/${postId}`, { method: 'DELETE' });
         document.getElementById('postModal').style.display = 'none';
+        toast('Post deleted', 'success');
         loadCalendar();
     } catch (error) {
         console.error('Error deleting post:', error);
-        alert('Failed to delete post: ' + error.message);
+        toast('Failed to delete post: ' + error.message, 'error');
     }
 }
 
@@ -354,12 +361,24 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPlatforms();
     
     document.getElementById('prevMonth').addEventListener('click', () => {
-        currentDate.setMonth(currentDate.getMonth() - 1);
+        if (currentView === 'month') {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+        } else if (currentView === 'week') {
+            currentDate.setDate(currentDate.getDate() - 7);
+        } else {
+            currentDate.setDate(currentDate.getDate() - 1);
+        }
         loadCalendar();
     });
     
     document.getElementById('nextMonth').addEventListener('click', () => {
-        currentDate.setMonth(currentDate.getMonth() + 1);
+        if (currentView === 'month') {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+        } else if (currentView === 'week') {
+            currentDate.setDate(currentDate.getDate() + 7);
+        } else {
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
         loadCalendar();
     });
     
@@ -405,10 +424,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify(payload)
                 });
 
-                showPlanMonthSuccess(`Created ${result.created} posts. Skipped ${result.skipped}.`);
+                toast(`Created ${result.created} posts. Skipped ${result.skipped}.`, 'success');
+                closePlanMonthModal();
                 await loadCalendar();
             } catch (error) {
-                showPlanMonthError(error.message || 'Failed to plan month');
+                toast(error.message || 'Failed to plan month', 'error');
             }
         });
     }

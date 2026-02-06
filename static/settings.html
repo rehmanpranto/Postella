@@ -1,14 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<ht            <a href="/settings.html" class="nav-link">Settings</a>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+            <a href="#" class="nav-link" id="logoutBtn">Logout</a> lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings - Postella</title>
+    <title>Settings — Postella</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📮</text></svg>">
 </head>
 <body>
     <nav class="navbar">
-        <div class="nav-brand">Postella</div>
+        <div class="nav-brand">📮 Postella</div>
+        <button class="nav-toggle" aria-label="Menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+        </button>
         <div class="nav-menu">
             <a href="/index.html" class="nav-link">Dashboard</a>
             <a href="/calendar.html" class="nav-link">Calendar</a>
@@ -140,7 +147,7 @@
                 const data = await apiCall(`/oauth/${platform}/connect`);
                 window.location.href = data.authorization_url;
             } catch (error) {
-                alert('Error connecting platform: ' + error.message);
+                toast('Error connecting platform: ' + error.message, 'error');
             }
         }
         
@@ -149,15 +156,18 @@
             
             try {
                 await apiCall(`/oauth/tokens/${tokenId}`, { method: 'DELETE' });
+                toast('Platform disconnected', 'success');
                 loadConnectedPlatforms();
             } catch (error) {
-                alert('Error disconnecting platform: ' + error.message);
+                toast('Error disconnecting: ' + error.message, 'error');
             }
         }
         
         // Change password form
         document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            setLoading(btn, true);
             
             const oldPassword = document.getElementById('oldPassword').value;
             const newPassword = document.getElementById('newPassword').value;
@@ -171,12 +181,15 @@
                     })
                 });
                 
-                showSuccess('passwordSuccess', 'Password updated successfully!');
+                toast('Password updated successfully!', 'success');
                 hideError('passwordError');
+                hideError('passwordSuccess');
                 document.getElementById('changePasswordForm').reset();
             } catch (error) {
                 showError('passwordError', error.message);
                 hideError('passwordSuccess');
+            } finally {
+                setLoading(btn, false);
             }
         });
         
@@ -184,8 +197,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('oauth_success') === 'true') {
             const platform = urlParams.get('platform');
-            alert(`Successfully connected to ${platform}!`);
-            // Remove params from URL
+            toast(`Successfully connected to ${platform}!`, 'success');
             window.history.replaceState({}, '', '/settings.html');
         }
         

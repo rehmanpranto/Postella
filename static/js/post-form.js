@@ -52,7 +52,7 @@ async function checkEditMode() {
             populateForm(post);
         } catch (error) {
             console.error('Error loading post:', error);
-            showError('errorMessage', 'Failed to load post');
+            toast('Failed to load post', 'error');
         }
     }
 }
@@ -60,7 +60,11 @@ async function checkEditMode() {
 function populateForm(post) {
     document.getElementById('postId').value = post.id;
     document.getElementById('title').value = post.title;
-    document.getElementById('platform').value = post.platform;
+
+    // Check the matching platform checkbox
+    const cb = document.querySelector(`input[name="platforms"][value="${post.platform}"]`);
+    if (cb) cb.checked = true;
+
     document.getElementById('content').value = post.content;
     const timezoneSelect = document.getElementById('timezone');
     const countrySelect = document.getElementById('country');
@@ -89,27 +93,62 @@ function populateForm(post) {
 }
 
 // Platform selection handler
-document.getElementById('platform').addEventListener('change', updatePlatformInfo);
+const platformCheckboxes = document.querySelectorAll('input[name="platforms"]');
+const platformAllCheckbox = document.getElementById('platformAll');
+
+// "All Platforms" toggle
+platformAllCheckbox.addEventListener('change', () => {
+    platformCheckboxes.forEach(cb => { cb.checked = platformAllCheckbox.checked; });
+    updatePlatformInfo();
+});
+
+// Individual checkbox → keep "All" in sync
+platformCheckboxes.forEach(cb => {
+    cb.addEventListener('change', () => {
+        platformAllCheckbox.checked = [...platformCheckboxes].every(c => c.checked);
+        updatePlatformInfo();
+    });
+});
+
+function getSelectedPlatforms() {
+    return [...platformCheckboxes].filter(cb => cb.checked).map(cb => cb.value);
+}
 
 function updatePlatformInfo() {
-    const platform = document.getElementById('platform').value;
+    const selected = getSelectedPlatforms();
     const infoDiv = document.getElementById('platformInfo');
-    
-    if (!platform) {
+
+    if (selected.length === 0) {
         infoDiv.innerHTML = '';
         document.getElementById('maxChars').textContent = 'unlimited';
         return;
     }
-    
-    const config = platformConfigs[platform];
-    if (config) {
-        document.getElementById('maxChars').textContent = config.max_text_length;
-        
+
+    // When multiple platforms are selected, show the strictest limits
+    let minTextLength = Infinity;
+    const lines = selected.map(name => {
+        const config = platformConfigs[name];
+        if (!config) return null;
+        if (config.max_text_length < minTextLength) minTextLength = config.max_text_length;
+        return `<strong>${name.charAt(0).toUpperCase() + name.slice(1)}:</strong> ${config.max_text_length} chars`;
+    }).filter(Boolean);
+
+    document.getElementById('maxChars').textContent = minTextLength === Infinity ? 'unlimited' : minTextLength;
+
+    if (selected.length === 1) {
+        const config = platformConfigs[selected[0]];
+        if (config) {
+            infoDiv.innerHTML = `
+                <strong>Platform Limits:</strong><br>
+                Max text: ${config.max_text_length} characters<br>
+                Images: ${config.supports_images ? '✓' : '✗'} (max ${config.max_image_size_mb}MB)<br>
+                Videos: ${config.supports_videos ? '✓' : '✗'} (max ${config.max_video_size_mb}MB)
+            `;
+        }
+    } else {
         infoDiv.innerHTML = `
-            <strong>Platform Limits:</strong><br>
-            Max text: ${config.max_text_length} characters<br>
-            Images: ${config.supports_images ? '✓' : '✗'} (max ${config.max_image_size_mb}MB)<br>
-            Videos: ${config.supports_videos ? '✓' : '✗'} (max ${config.max_video_size_mb}MB)
+            <strong>Posting to ${selected.length} platforms</strong> — character limit set to the strictest (${minTextLength}).<br>
+            ${lines.join(' · ')}
         `;
     }
 }
@@ -154,11 +193,19 @@ document.getElementById('media').addEventListener('change', (e) => {
 // Form submission
 document.getElementById('postForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    hideError('errorMessage');
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const selectedPlatforms = getSelectedPlatforms();
+
+    if (!editMode && selectedPlatforms.length === 0) {
+        toast('Please select at least one platform', 'error');
+        return;
+    }
+
+    setLoading(submitBtn, true);
     
     const formData = new FormData();
     formData.append('title', document.getElementById('title').value);
-    formData.append('platform', document.getElementById('platform').value);
     formData.append('content', document.getElementById('content').value);
     formData.append('timezone', document.getElementById('timezone').value);
     
@@ -176,16 +223,29 @@ document.getElementById('postForm').addEventListener('submit', async (e) => {
     }
     
     try {
-        const endpoint = editMode ? `/posts/${currentPostId}` : '/posts';
-        const method = editMode ? 'PUT' : 'POST';
-        
-        // For FormData, we need to use fetch directly
         const token = getToken();
+        let endpoint, method;
+
+        if (editMode) {
+            // Edit mode: single platform update (keep existing behaviour)
+            formData.append('platform', selectedPlatforms[0] || document.querySelector('input[name="platforms"]:checked')?.value);
+            endpoint = `/posts/${currentPostId}`;
+            method = 'PUT';
+        } else if (selectedPlatforms.length === 1) {
+            // Single platform: use original endpoint
+            formData.append('platform', selectedPlatforms[0]);
+            endpoint = '/posts';
+            method = 'POST';
+        } else {
+            // Multiple platforms: use the multi endpoint
+            formData.append('platforms', selectedPlatforms.join(','));
+            endpoint = '/posts/multi';
+            method = 'POST';
+        }
+
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
             method: method,
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
+            headers: { 'Authorization': `Bearer ${token}` },
             body: formData
         });
         
@@ -195,14 +255,22 @@ document.getElementById('postForm').addEventListener('submit', async (e) => {
         }
         
         const data = await response.json();
-        showSuccess('successMessage', editMode ? 'Post updated successfully!' : 'Post created successfully!');
+        const count = data.posts ? data.posts.length : 1;
+        const msg = editMode
+            ? 'Post updated successfully!'
+            : count > 1
+                ? `Post created for ${count} platforms! 🎉`
+                : 'Post created successfully!';
+        toast(msg, 'success');
         
         setTimeout(() => {
             window.location.href = '/posts.html';
         }, 1500);
         
     } catch (error) {
-        showError('errorMessage', error.message);
+        toast(error.message, 'error');
+    } finally {
+        setLoading(submitBtn, false);
     }
 });
 

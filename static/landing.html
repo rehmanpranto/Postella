@@ -4,15 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Postella — Plan, Schedule, Publish</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📮</text></svg>">
 </head>
 <body class="landing-page">
     <nav class="navbar landing-nav">
-        <div class="nav-brand">Postella</div>
+        <div class="nav-brand">📮 Postella</div>
+        <button class="nav-toggle" aria-label="Menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+        </button>
         <div class="nav-menu">
             <a href="#features" class="nav-link">Features</a>
             <a href="#how" class="nav-link">How it works</a>
             <a href="#pricing" class="nav-link">Pricing</a>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌙</button>
             <a href="/login.html" class="btn btn-secondary">Login</a>
             <a href="/register.html" class="btn btn-primary">Get started</a>
         </div>
@@ -28,7 +34,7 @@
             </p>
             <div class="hero-actions">
                 <a href="/register.html" class="btn btn-primary btn-lg">Start free</a>
-                <a href="/login.html" class="btn btn-ghost btn-lg">Book a demo</a>
+                <button class="btn btn-ghost btn-lg" onclick="openBookingModal('demo')">Book a demo</button>
             </div>
             <div class="hero-proof">
                 <span>⚡ Faster planning</span>
@@ -170,7 +176,7 @@
                     <li>Dedicated onboarding</li>
                     <li>Custom SLA</li>
                 </ul>
-                <a href="/login.html" class="btn btn-secondary btn-block">Contact sales</a>
+                <button class="btn btn-secondary btn-block" onclick="openBookingModal('sales')">Contact sales</button>
             </div>
         </div>
     </section>
@@ -191,5 +197,174 @@
             <a href="#features">Features</a>
         </div>
     </footer>
+    <script src="/static/js/app.js"></script>
+
+    <!-- Booking / Contact Modal -->
+    <div id="bookingModal" class="modal-overlay" style="display:none">
+        <div class="modal-dialog">
+            <button class="modal-close" onclick="closeBookingModal()" aria-label="Close">&times;</button>
+            <h2 id="bookingModalTitle">Book a Demo</h2>
+            <p id="bookingModalSubtitle" class="modal-subtitle">Tell us when works best and we'll set it up.</p>
+
+            <form id="bookingForm" autocomplete="on">
+                <input type="hidden" id="bookingType" value="demo">
+
+                <div class="form-group">
+                    <label for="bookingName">Name <span class="optional">(optional)</span></label>
+                    <input type="text" id="bookingName" placeholder="Your name" autocomplete="name">
+                </div>
+
+                <div class="form-group">
+                    <label for="bookingEmail">Email <span class="required">*</span></label>
+                    <input type="email" id="bookingEmail" placeholder="you@example.com" required autocomplete="email">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="bookingDate">Preferred date <span class="required">*</span></label>
+                        <input type="date" id="bookingDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingTime">Preferred time <span class="required">*</span></label>
+                        <input type="time" id="bookingTime" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="bookingTimezone">Timezone</label>
+                    <select id="bookingTimezone">
+                        <option value="Asia/Dhaka">Asia/Dhaka (BST)</option>
+                        <option value="UTC">UTC</option>
+                        <option value="America/New_York">America/New_York (ET)</option>
+                        <option value="Europe/London">Europe/London (GMT/BST)</option>
+                        <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="bookingMessage">Message <span class="optional">(optional)</span></label>
+                    <textarea id="bookingMessage" rows="3" placeholder="Anything you'd like us to know…"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" id="bookingSubmit">
+                    <span class="btn-text">Submit request</span>
+                    <span class="btn-spinner" style="display:none">⏳ Sending…</span>
+                </button>
+            </form>
+
+            <div id="bookingSuccess" style="display:none" class="booking-success">
+                <div class="success-icon">🎉</div>
+                <h3>We've got your request!</h3>
+                <p>Our team will reach out to <strong id="successEmail"></strong> shortly.</p>
+                <button class="btn btn-secondary" onclick="closeBookingModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    /* ---- Booking modal logic ---- */
+    (function() {
+        const modal = document.getElementById('bookingModal');
+        const form = document.getElementById('bookingForm');
+        const success = document.getElementById('bookingSuccess');
+
+        // Set minimum date to today
+        const dateInput = document.getElementById('bookingDate');
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.setAttribute('min', today);
+        dateInput.value = today;
+
+        // Auto-detect timezone
+        try {
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const sel = document.getElementById('bookingTimezone');
+            for (const opt of sel.options) {
+                if (opt.value === tz) { opt.selected = true; break; }
+            }
+        } catch(_) {}
+
+        window.openBookingModal = function(type) {
+            const title = document.getElementById('bookingModalTitle');
+            const subtitle = document.getElementById('bookingModalSubtitle');
+            document.getElementById('bookingType').value = type;
+
+            if (type === 'sales') {
+                title.textContent = 'Contact Sales';
+                subtitle.textContent = 'Tell us about your agency needs and we\'ll schedule a call.';
+            } else {
+                title.textContent = 'Book a Demo';
+                subtitle.textContent = 'Tell us when works best and we\'ll set it up.';
+            }
+
+            form.style.display = '';
+            success.style.display = 'none';
+            form.reset();
+            dateInput.value = today;
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            document.getElementById('bookingEmail').focus();
+        };
+
+        window.closeBookingModal = function() {
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+        };
+
+        // Close on backdrop click
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) closeBookingModal();
+        });
+
+        // Close on Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal.style.display === 'flex') closeBookingModal();
+        });
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('bookingSubmit');
+            const btnText = btn.querySelector('.btn-text');
+            const btnSpinner = btn.querySelector('.btn-spinner');
+            btn.disabled = true;
+            btnText.style.display = 'none';
+            btnSpinner.style.display = '';
+
+            const payload = {
+                email: document.getElementById('bookingEmail').value.trim(),
+                name: document.getElementById('bookingName').value.trim() || undefined,
+                preferred_date: document.getElementById('bookingDate').value,
+                preferred_time: document.getElementById('bookingTime').value,
+                timezone: document.getElementById('bookingTimezone').value,
+                message: document.getElementById('bookingMessage').value.trim() || undefined,
+                booking_type: document.getElementById('bookingType').value,
+            };
+
+            try {
+                const res = await fetch('/api/contact/book-demo', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    form.style.display = 'none';
+                    document.getElementById('successEmail').textContent = payload.email;
+                    success.style.display = '';
+                } else {
+                    if (typeof toast === 'function') toast(data.error || 'Something went wrong', 'error');
+                    else alert(data.error || 'Something went wrong');
+                }
+            } catch (err) {
+                if (typeof toast === 'function') toast('Network error. Please try again.', 'error');
+                else alert('Network error. Please try again.');
+            } finally {
+                btn.disabled = false;
+                btnText.style.display = '';
+                btnSpinner.style.display = 'none';
+            }
+        });
+    })();
+    </script>
 </body>
 </html>

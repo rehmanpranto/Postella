@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models import User, Post, AuditLog, PostStatus, UserRole, PlatformType
+from app.models import User, Post, AuditLog, PostStatus, UserRole, PlatformType, DemoBooking
 from app.extensions import db
 from app.utils.decorators import admin_required, get_current_user_id
 from app.utils.audit import log_action
@@ -255,3 +255,50 @@ def retry_failed_post(post_id):
         'message': 'Post queued for retry',
         'post': post.to_dict()
     }), 200
+
+
+@bp.route('/demo-bookings', methods=['GET'])
+@jwt_required()
+@admin_required
+def get_demo_bookings():
+    """List all demo/sales booking requests (admin only)."""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    status_filter = request.args.get('status')
+    booking_type = request.args.get('type')
+
+    query = DemoBooking.query
+    if status_filter:
+        query = query.filter_by(status=status_filter)
+    if booking_type:
+        query = query.filter_by(booking_type=booking_type)
+
+    pagination = query.order_by(DemoBooking.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    return jsonify({
+        'bookings': [b.to_dict() for b in pagination.items],
+        'total': pagination.total,
+        'page': page,
+        'per_page': per_page,
+        'pages': pagination.pages
+    }), 200
+
+
+@bp.route('/demo-bookings/<int:booking_id>', methods=['PUT'])
+@jwt_required()
+@admin_required
+def update_demo_booking(booking_id):
+    """Update a booking status (admin only)."""
+    booking = DemoBooking.query.get(booking_id)
+    if not booking:
+        return jsonify({'error': 'Booking not found'}), 404
+
+    data = request.get_json() or {}
+    new_status = data.get('status')
+    if new_status and new_status in ('pending', 'confirmed', 'cancelled'):
+        booking.status = new_status
+        db.session.commit()
+
+    return jsonify({'booking': booking.to_dict()}), 200

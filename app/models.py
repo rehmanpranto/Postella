@@ -232,3 +232,33 @@ class PlatformConfig(db.Model):
             'rate_limit_per_hour': self.rate_limit_per_hour,
             'is_active': self.is_active
         }
+
+
+class DemoBooking(db.Model):
+    """Demo / sales meeting request"""
+    __tablename__ = 'demo_bookings'
+
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), nullable=False, index=True)
+    name = db.Column(db.String(100), nullable=True)
+    preferred_date = db.Column(db.String(10), nullable=False)   # YYYY-MM-DD
+    preferred_time = db.Column(db.String(5), nullable=False)    # HH:MM
+    timezone = db.Column(db.String(50), default='UTC', nullable=False)
+    message = db.Column(db.Text, nullable=True)
+    booking_type = db.Column(db.String(20), default='demo', nullable=False)  # demo | sales
+    status = db.Column(db.String(20), default='pending', nullable=False)     # pending | confirmed | cancelled
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'email': self.email,
+            'name': self.name,
+            'preferred_date': self.preferred_date,
+            'preferred_time': self.preferred_time,
+            'timezone': self.timezone,
+            'message': self.message,
+            'booking_type': self.booking_type,
+            'status': self.status,
+            'created_at': self.created_at.isoformat()
+        }
